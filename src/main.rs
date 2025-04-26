@@ -7,7 +7,7 @@ pub mod routes;
 use crate::routes::blog;
 
 #[derive(OpenApi)]
-#[openapi(paths(blog::get_metadata))]
+#[openapi(info(title = "api.zlendy.com"), paths(blog::get_metadata))]
 pub struct ApiDoc;
 
 #[tokio::main]
