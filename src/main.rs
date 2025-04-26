@@ -14,7 +14,7 @@ pub struct ApiDoc;
 async fn main() {
     let app = Router::new()
         .route("/blog/metadata/{slug}", get(blog::get_metadata))
-        .merge(SwaggerUi::new("/swagger-ui").url("/api-doc/openapi.json", ApiDoc::openapi()));
+        .merge(SwaggerUi::new("/").url("/api-doc/openapi.json", ApiDoc::openapi()));
 
     let listener = TcpListener::bind("0.0.0.0:3000").await.unwrap();
     axum::serve(listener, app).await.unwrap();
