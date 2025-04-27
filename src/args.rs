@@ -2,7 +2,7 @@ use std::error::Error;
 
 use clap::Parser;
 
-#[derive(Parser, Debug, Clone)]
+#[derive(Parser, Debug, Clone, Default)]
 #[command(version, about, long_about = None)]
 pub struct Args {
     #[arg(env = "HOST", long, default_value_t = String::from("0.0.0.0"))]
