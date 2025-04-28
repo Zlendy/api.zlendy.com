@@ -1,3 +1,4 @@
+use core::option::Option::Some;
 use std::collections::HashMap;
 
 use axum::{
@@ -39,8 +40,13 @@ fn expired_cache(last_modified: DateTime<Utc>, minutes: i64) -> bool {
     return diff.num_minutes() > minutes;
 }
 
-async fn update_routes() -> BlogRoutes {
-    let mut routes = BlogRoutes::new();
+async fn update_routes(current_routes: Option<BlogRoutes>) -> BlogRoutes {
+    // Reuse BlogRoutes if it exists
+    let mut routes = match current_routes {
+        Some(routes) => routes,
+        None => BlogRoutes::new(),
+    };
+
     routes.insert("first-post".to_string(), BlogValue::default()); // TODO: Load from zlendy.com
 
     return routes;
@@ -66,9 +72,9 @@ pub async fn get_metadata(
     let mut blog = blog.write().await;
 
     let routes = match blog.value.clone() {
-        Some(_) if expired_cache(blog.last_modified, 5) => update_routes().await, // Routes cache has expired
-        Some(routes) => routes,        // Routes cache is still valid
-        None => update_routes().await, // Routes cache does not exist
+        Some(routes) if expired_cache(blog.last_modified, 5) => update_routes(Some(routes)).await, // Routes cache has expired
+        Some(routes) => routes,            // Routes cache is still valid
+        None => update_routes(None).await, // Routes cache does not exist
     };
     blog.value = Some(routes.clone());
 
