@@ -47,7 +47,19 @@ async fn update_routes(current_routes: Option<BlogRoutes>) -> BlogRoutes {
         None => BlogRoutes::new(),
     };
 
-    routes.insert("first-post".to_string(), BlogValue::default()); // TODO: Load from zlendy.com
+    // TODO: Load from zlendy.com
+    routes.insert(
+        "first-post".to_string(),
+        BlogValue {
+            metadata: BlogMetadata {
+                views: 1,
+                comments: 2,
+                reactions: 3,
+            },
+            last_modified: Utc::now(),
+            fediverse: Some("TODO".to_string()),
+        },
+    );
 
     return routes;
 }
@@ -72,9 +84,21 @@ pub async fn get_metadata(
     let mut blog = blog.write().await;
 
     let routes = match blog.value.clone() {
-        Some(routes) if expired_cache(blog.last_modified, 5) => update_routes(Some(routes)).await, // Routes cache has expired
-        Some(routes) => routes,            // Routes cache is still valid
-        None => update_routes(None).await, // Routes cache does not exist
+        Some(routes) if expired_cache(blog.last_modified, 5) => {
+            // Routes cache has expired
+            let routes = update_routes(Some(routes)).await;
+            blog.last_modified = Utc::now();
+
+            routes
+        }
+        Some(routes) => routes, // Routes cache is still valid
+        None => {
+            // Routes cache does not exist
+            let routes = update_routes(None).await;
+            blog.last_modified = Utc::now();
+
+            routes
+        }
     };
     blog.value = Some(routes.clone());
 
