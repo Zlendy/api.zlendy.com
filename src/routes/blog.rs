@@ -1,5 +1,5 @@
 use core::option::Option::Some;
-use std::collections::HashMap;
+use std::{collections::HashMap, error::Error};
 
 use axum::{
     Json, debug_handler,
@@ -40,28 +40,33 @@ fn expired_cache(last_modified: DateTime<Utc>, minutes: i64) -> bool {
     return diff.num_minutes() > minutes;
 }
 
-async fn update_routes(current_routes: Option<BlogRoutes>) -> BlogRoutes {
+async fn update_routes(
+    current_routes: Option<BlogRoutes>,
+    host: String,
+) -> Result<BlogRoutes, Box<dyn Error>> {
     // Reuse BlogRoutes if it exists
     let mut routes = match current_routes {
         Some(routes) => routes,
         None => BlogRoutes::new(),
     };
 
-    // TODO: Load from zlendy.com
-    routes.insert(
-        "first-post".to_string(),
-        BlogValue {
-            metadata: BlogMetadata {
-                views: 1,
-                comments: 2,
-                reactions: 3,
-            },
-            last_modified: Utc::now(),
-            fediverse: Some("TODO".to_string()),
-        },
-    );
+    let response = reqwest::get(format!("{host}/blog.json"))
+        .await?
+        .json::<HashMap<String, Option<String>>>()
+        .await?;
 
-    return routes;
+    for (slug, fediverse) in response {
+        routes.insert(
+            slug,
+            BlogValue {
+                metadata: BlogMetadata::default(), // This field is populated later
+                last_modified: Utc::now(),
+                fediverse,
+            },
+        );
+    }
+
+    return Ok(routes);
 }
 
 #[utoipa::path(
@@ -86,20 +91,25 @@ pub async fn get_metadata(
     let routes = match blog.value.clone() {
         Some(routes) if expired_cache(blog.last_modified, 5) => {
             // Routes cache has expired
-            let routes = update_routes(Some(routes)).await;
+            let routes = update_routes(Some(routes), args.zlendy_url.clone()).await;
             blog.last_modified = Utc::now();
 
             routes
         }
-        Some(routes) => routes, // Routes cache is still valid
+        Some(routes) => Ok(routes), // Routes cache is still valid
         None => {
             // Routes cache does not exist
-            let routes = update_routes(None).await;
+            let routes = update_routes(None, args.zlendy_url.clone()).await;
             blog.last_modified = Utc::now();
 
             routes
         }
     };
+
+    let Ok(routes) = routes else {
+        return Err(StatusCode::SERVICE_UNAVAILABLE);
+    };
+
     blog.value = Some(routes.clone());
 
     let Some(value) = routes.get(&slug) else {
