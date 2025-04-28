@@ -36,7 +36,7 @@ pub struct BlogMetadata {
 }
 
 fn expired_cache(last_modified: DateTime<Utc>, minutes: i64) -> bool {
-    let diff = last_modified - Utc::now();
+    let diff = Utc::now() - last_modified;
     return diff.num_minutes() > minutes;
 }
 
