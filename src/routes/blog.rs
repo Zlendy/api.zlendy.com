@@ -56,10 +56,15 @@ async fn update_routes(
         .await?;
 
     for (slug, fediverse) in response {
+        let metadata = match routes.get(&slug) {
+            Some(value) => value.metadata.clone(),
+            None => BlogMetadata::default(),
+        };
+
         routes.insert(
             slug,
             BlogValue {
-                metadata: BlogMetadata::default(), // This field is populated later
+                metadata, // This field is updated later
                 last_modified: Utc::now(),
                 fediverse,
             },
