@@ -1,4 +1,4 @@
-use std::{borrow::Cow, error::Error, time::Duration};
+use std::{borrow::Cow, time::Duration};
 
 use args::Args;
 use axum::{

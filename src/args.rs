@@ -1,5 +1,3 @@
-use std::error::Error;
-
 use clap::Parser;
 
 #[derive(Parser, Debug, Clone, Default)]
