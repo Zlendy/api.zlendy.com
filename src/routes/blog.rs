@@ -44,16 +44,16 @@ async fn update_routes(
     current_routes: Option<BlogRoutes>,
     host: String,
 ) -> Result<BlogRoutes, Box<dyn Error>> {
+    let response = reqwest::get(format!("{host}/blog.json"))
+        .await?
+        .json::<HashMap<String, Option<String>>>()
+        .await?;
+
     // Reuse BlogRoutes if it exists
     let mut routes = match current_routes {
         Some(routes) => routes,
         None => BlogRoutes::new(),
     };
-
-    let response = reqwest::get(format!("{host}/blog.json"))
-        .await?
-        .json::<HashMap<String, Option<String>>>()
-        .await?;
 
     for (slug, fediverse) in response {
         let metadata = match routes.get(&slug) {
