@@ -25,7 +25,7 @@ pub struct Args {
 }
 
 impl Args {
-    pub fn load() -> Result<Args, Box<dyn Error>> {
+    pub fn load() -> Result<Args, dotenvy::Error> {
         dotenvy::dotenv()?;
         Ok(Args::parse())
     }

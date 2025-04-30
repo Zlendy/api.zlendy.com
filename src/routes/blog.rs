@@ -1,7 +1,6 @@
 use core::option::Option::Some;
 use std::{
     collections::HashMap,
-    error::Error,
     sync::{Arc, Mutex},
 };
 
@@ -49,7 +48,7 @@ fn expired_cache(last_modified: DateTime<Utc>, minutes: i64) -> bool {
 async fn update_routes(
     current_routes: Option<BlogRoutes>,
     host: String,
-) -> Result<BlogRoutes, Box<dyn Error>> {
+) -> Result<BlogRoutes, reqwest::Error> {
     let response = reqwest::get(format!("{host}/blog.json"))
         .await?
         .json::<HashMap<String, Option<String>>>()

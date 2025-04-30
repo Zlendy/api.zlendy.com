@@ -27,7 +27,7 @@ pub struct AppState {
 pub struct ApiDoc;
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn Error>> {
+async fn main() -> Result<(), dotenvy::Error> {
     let args = Args::load()?;
     let address = format!("{}:{}", args.host, args.port);
 
