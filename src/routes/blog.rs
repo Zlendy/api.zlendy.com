@@ -1,5 +1,9 @@
 use core::option::Option::Some;
-use std::{collections::HashMap, error::Error};
+use std::{
+    collections::HashMap,
+    error::Error,
+    sync::{Arc, Mutex},
+};
 
 use axum::{
     Json, debug_handler,
@@ -11,15 +15,17 @@ use chrono::{DateTime, Utc};
 use serde::Serialize;
 use utoipa::ToSchema;
 
-use crate::SharedAppState;
+use crate::AppState;
 
-pub type BlogRoutes = HashMap<String, BlogValue>;
+pub type SharedBlogState = Arc<Mutex<BlogState>>;
 
 #[derive(Default, Debug, Clone)]
 pub struct BlogState {
     value: Option<BlogRoutes>,
     last_modified: DateTime<Utc>,
 }
+
+pub type BlogRoutes = HashMap<String, BlogValue>;
 
 #[derive(Default, Debug, Clone)]
 pub struct BlogValue {
@@ -88,16 +94,16 @@ async fn update_routes(
 #[debug_handler]
 pub async fn get_metadata(
     Path(slug): Path<String>,
-    State(state): State<SharedAppState>,
+    State(state): State<AppState>,
 ) -> Result<impl IntoResponse, StatusCode> {
-    let SharedAppState { args, blog } = state;
-    let mut blog = blog.write().await;
+    let AppState { args, blog } = state;
+    let mut blog_state = blog.lock().expect("mutex was poisoned").clone();
 
-    let routes = match blog.value.clone() {
-        Some(routes) if expired_cache(blog.last_modified, 5) => {
+    let routes = match blog_state.value.clone() {
+        Some(routes) if expired_cache(blog_state.last_modified, 5) => {
             // Routes cache has expired
             let routes = update_routes(Some(routes), args.zlendy_url.clone()).await;
-            blog.last_modified = Utc::now();
+            blog_state.last_modified = Utc::now();
 
             routes
         }
@@ -105,7 +111,7 @@ pub async fn get_metadata(
         None => {
             // Routes cache does not exist
             let routes = update_routes(None, args.zlendy_url.clone()).await;
-            blog.last_modified = Utc::now();
+            blog_state.last_modified = Utc::now();
 
             routes
         }
@@ -115,7 +121,14 @@ pub async fn get_metadata(
         return Err(StatusCode::SERVICE_UNAVAILABLE);
     };
 
-    blog.value = Some(routes.clone());
+    blog_state.value = Some(routes.clone());
+
+    {
+        // Mutex guard is unlocked outside this scope
+        let mut blog_mutex = blog.lock().expect("mutex was poisoned");
+        blog_mutex.value = blog_state.value.clone();
+        blog_mutex.last_modified = blog_state.last_modified;
+    }
 
     let Some(value) = routes.get(&slug) else {
         return Err(StatusCode::NOT_FOUND);
@@ -123,7 +136,7 @@ pub async fn get_metadata(
 
     // TODO: Load data from Umami Analytics and store it in BlogMetadata
 
-    println!("{}, {:#?}, {:#?}", slug, args, blog);
+    println!("{}, {:#?}, {:#?}", slug, args, blog_state);
 
     Ok(Json(value.metadata.clone()))
 }

@@ -1,12 +1,12 @@
-use std::{borrow::Cow, error::Error, sync::Arc, time::Duration};
+use std::{borrow::Cow, error::Error, time::Duration};
 
 use args::Args;
 use axum::{
     Router, error_handling::HandleErrorLayer, http::StatusCode, response::IntoResponse,
     routing::get,
 };
-use routes::blog::BlogState;
-use tokio::{net::TcpListener, sync::RwLock};
+use routes::blog::SharedBlogState;
+use tokio::net::TcpListener;
 use tower::{BoxError, ServiceBuilder};
 use tower_http::compression::CompressionLayer;
 use utoipa::OpenApi;
@@ -17,8 +17,8 @@ pub mod routes;
 use crate::routes::blog;
 
 #[derive(Default, Clone)]
-pub struct SharedAppState {
-    blog: Arc<RwLock<BlogState>>,
+pub struct AppState {
+    blog: SharedBlogState,
     args: Args,
 }
 
@@ -31,7 +31,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let args = Args::load()?;
     let address = format!("{}:{}", args.host, args.port);
 
-    let mut state = SharedAppState::default();
+    let mut state = AppState::default();
     state.args = args;
 
     let app = Router::new()
