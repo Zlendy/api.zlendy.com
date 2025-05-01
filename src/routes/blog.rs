@@ -44,7 +44,7 @@ pub struct BlogMetadata {
 
 fn expired_cache(last_modified: DateTime<Utc>, minutes: i64) -> bool {
     let diff = Utc::now() - last_modified;
-    return diff.num_minutes() > minutes;
+    diff.num_minutes() > minutes
 }
 
 async fn update_routes(
@@ -59,10 +59,7 @@ async fn update_routes(
         .await?;
 
     // Reuse BlogRoutes if it exists
-    let mut routes = match current_routes {
-        Some(routes) => routes,
-        None => BlogRoutes::new(),
-    };
+    let mut routes = current_routes.unwrap_or_default();
 
     for (slug, fediverse) in response {
         let metadata = match routes.get(&slug) {
@@ -80,7 +77,7 @@ async fn update_routes(
         );
     }
 
-    return Ok(routes);
+    Ok(routes)
 }
 
 #[utoipa::path(
@@ -135,7 +132,7 @@ pub async fn get_metadata(
         return Err(StatusCode::NOT_FOUND);
     };
 
-    if expired_cache(value.last_modified, 5) == false {
+    if !expired_cache(value.last_modified, 5) {
         println!("info: found valid entry in routes cache");
         return Ok(Json(value.metadata.clone()));
     }

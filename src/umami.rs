@@ -35,11 +35,11 @@ pub async fn verify(host: String, token: Option<String>) -> Result<String, Respo
         .await?
         .status();
 
-    return if response.is_success() {
+    if response.is_success() {
         Ok(token)
     } else {
         Err(ResponseError::UnauthorizedError)
-    };
+    }
 }
 
 #[derive(Serialize, Deserialize, Default, Clone)]
@@ -83,7 +83,7 @@ pub async fn login(host: String, login: LoginRequest) -> Result<LoginResponse, R
         response.user.username, response.user.role
     );
 
-    return Ok(response);
+    Ok(response)
 }
 
 #[derive(Debug, Serialize, Deserialize, Default, Clone)]
@@ -109,7 +109,7 @@ async fn daterange(
         .json::<DateRange>()
         .await?;
 
-    return Ok(response);
+    Ok(response)
 }
 
 #[derive(Debug, Serialize, Deserialize, Default, Clone)]
@@ -151,5 +151,5 @@ pub async fn pageviews_path(
         .json::<StatsResponse>()
         .await?;
 
-    return Ok(response.pageviews.value);
+    Ok(response.pageviews.value)
 }
