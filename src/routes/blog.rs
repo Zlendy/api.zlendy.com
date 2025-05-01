@@ -1,8 +1,5 @@
 use core::option::Option::Some;
-use std::{
-    collections::HashMap,
-    sync::{Arc, Mutex},
-};
+use std::{collections::HashMap, sync::Arc};
 
 use axum::{
     Json, debug_handler,
@@ -12,6 +9,7 @@ use axum::{
 };
 use chrono::{DateTime, Utc};
 use serde::Serialize;
+use tokio::sync::Mutex;
 use utoipa::ToSchema;
 
 use crate::AppState;
@@ -49,6 +47,8 @@ async fn update_routes(
     current_routes: Option<BlogRoutes>,
     host: String,
 ) -> Result<BlogRoutes, reqwest::Error> {
+    println!("update_routes");
+
     let response = reqwest::get(format!("{host}/blog.json"))
         .await?
         .json::<HashMap<String, Option<String>>>()
@@ -96,7 +96,7 @@ pub async fn get_metadata(
     State(state): State<AppState>,
 ) -> Result<impl IntoResponse, StatusCode> {
     let AppState { args, blog } = state;
-    let mut blog_state = blog.lock().expect("mutex was poisoned").clone();
+    let mut blog_state = blog.lock().await;
 
     let routes = match blog_state.value.clone() {
         Some(routes) if expired_cache(blog_state.last_modified, 5) => {
@@ -121,13 +121,6 @@ pub async fn get_metadata(
     };
 
     blog_state.value = Some(routes.clone());
-
-    {
-        // Mutex guard is unlocked outside this scope
-        let mut blog_mutex = blog.lock().expect("mutex was poisoned");
-        blog_mutex.value = blog_state.value.clone();
-        blog_mutex.last_modified = blog_state.last_modified;
-    }
 
     let Some(value) = routes.get(&slug) else {
         return Err(StatusCode::NOT_FOUND);
