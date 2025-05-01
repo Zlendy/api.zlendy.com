@@ -32,8 +32,10 @@ async fn main() -> Result<(), dotenvy::Error> {
     let args = Args::load()?;
     let address = format!("{}:{}", args.host, args.port);
 
-    let mut state = AppState::default();
-    state.args = args;
+    let state = AppState {
+        args,
+        ..Default::default()
+    };
 
     let app = Router::new()
         .route("/blog/metadata/{slug}", get(blog::get_metadata))
