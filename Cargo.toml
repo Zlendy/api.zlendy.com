@@ -5,7 +5,7 @@ edition = "2024"
 
 [dependencies]
 axum = { version = "0.8.3", features = ["macros"] }
-chrono = "0.4.40"
+chrono = { version = "0.4.40", features = ["serde"] }
 clap = { version = "4.5.37", features = ["derive", "env"] }
 dotenvy = { version = "0.15.7" }
 reqwest = { version = "0.12.15", features = ["json"] }

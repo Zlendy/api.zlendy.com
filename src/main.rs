@@ -14,6 +14,7 @@ use utoipa_swagger_ui::SwaggerUi;
 
 pub mod args;
 pub mod routes;
+pub mod umami;
 use crate::routes::blog;
 
 #[derive(Default, Clone)]
@@ -48,7 +49,9 @@ async fn main() -> Result<(), dotenvy::Error> {
         )
         .with_state(state);
 
-    let listener = TcpListener::bind(address).await.unwrap();
+    let listener = TcpListener::bind(address.clone()).await.unwrap();
+    println!("info: listening on {}", address);
+
     axum::serve(listener, app).await.unwrap();
 
     Ok(())

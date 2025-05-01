@@ -18,6 +18,9 @@ pub struct Args {
     #[arg(env = "UMAMI_PASSWORD", long)]
     pub umami_password: String,
 
+    #[arg(env = "UMAMI_WEBSITE_ID", long)]
+    pub umami_website_id: String,
+
     #[arg(env = "ZLENDY_URL", long)]
     pub zlendy_url: String,
 }

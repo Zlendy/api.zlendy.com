@@ -12,7 +12,10 @@ use serde::Serialize;
 use tokio::sync::Mutex;
 use utoipa::ToSchema;
 
-use crate::AppState;
+use crate::{
+    AppState,
+    umami::{self, LoginRequest},
+};
 
 pub type SharedBlogState = Arc<Mutex<BlogState>>;
 
@@ -20,6 +23,7 @@ pub type SharedBlogState = Arc<Mutex<BlogState>>;
 pub struct BlogState {
     value: Option<BlogRoutes>,
     last_modified: DateTime<Utc>,
+    umami_token: Option<String>,
 }
 
 pub type BlogRoutes = HashMap<String, BlogValue>;
@@ -47,7 +51,7 @@ async fn update_routes(
     current_routes: Option<BlogRoutes>,
     host: String,
 ) -> Result<BlogRoutes, reqwest::Error> {
-    println!("update_routes");
+    println!("fn: blog::update_routes");
 
     let response = reqwest::get(format!("{host}/blog.json"))
         .await?
@@ -70,7 +74,7 @@ async fn update_routes(
             slug,
             BlogValue {
                 metadata, // This field is updated later
-                last_modified: Utc::now(),
+                last_modified: DateTime::default(),
                 fediverse,
             },
         );
@@ -98,6 +102,8 @@ pub async fn get_metadata(
     let AppState { args, blog } = state;
     let mut blog_state = blog.lock().await;
 
+    println!("\n\nfn: blog::get_metadata ({})", slug);
+
     let routes = match blog_state.value.clone() {
         Some(routes) if expired_cache(blog_state.last_modified, 5) => {
             // Routes cache has expired
@@ -116,19 +122,71 @@ pub async fn get_metadata(
         }
     };
 
-    let Ok(routes) = routes else {
+    let Ok(mut routes) = routes else {
+        println!("error: routes cache couldn't be updated");
+        println!("{:#?}", routes);
         return Err(StatusCode::SERVICE_UNAVAILABLE);
     };
 
     blog_state.value = Some(routes.clone());
 
-    let Some(value) = routes.get(&slug) else {
+    let Some(mut value) = routes.get(&slug).cloned() else {
+        println!("error: slug \"{}\" was not found in routes cache", slug);
         return Err(StatusCode::NOT_FOUND);
     };
 
-    // TODO: Load data from Umami Analytics and store it in BlogMetadata
+    if expired_cache(value.last_modified, 5) == false {
+        println!("info: found valid entry in routes cache");
+        return Ok(Json(value.metadata.clone()));
+    }
 
-    println!("{}, {:#?}, {:#?}", slug, args, blog_state);
+    println!("info: updating entry in routes cache");
 
+    let umami_token =
+        match umami::verify(args.umami_url.clone(), blog_state.umami_token.clone()).await {
+            Ok(token) => token,
+            Err(_) => {
+                let umami_login = umami::login(
+                    args.umami_url.clone(),
+                    LoginRequest {
+                        username: args.umami_username.clone(),
+                        password: args.umami_password.clone(),
+                    },
+                )
+                .await;
+
+                let Ok(umami_login) = umami_login else {
+                    println!("error: invalid umami login credentials");
+                    return Err(StatusCode::SERVICE_UNAVAILABLE);
+                };
+
+                umami_login.token
+            }
+        };
+
+    blog_state.umami_token = Some(umami_token.clone());
+
+    let umami_pageviews = umami::pageviews_path(
+        args.umami_url.clone(),
+        umami_token.clone(),
+        args.umami_website_id.clone(),
+        format!("/blog/{}", slug.clone()),
+    )
+    .await;
+
+    let Ok(umami_pageviews) = umami_pageviews else {
+        println!("error: couldn't parse pageviews");
+        return Err(StatusCode::SERVICE_UNAVAILABLE);
+    };
+
+    value.metadata.views = umami_pageviews;
+    value.last_modified = Utc::now();
+
+    routes.insert(slug.clone(), value.clone());
+
+    blog_state.value = Some(routes.clone());
+
+    println!("info: fetched updated data successfully");
+    // println!("{:#?}", blog_state);
     Ok(Json(value.metadata.clone()))
 }
