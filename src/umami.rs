@@ -87,33 +87,6 @@ pub async fn login(host: String, login: LoginRequest) -> Result<LoginResponse, R
 }
 
 #[derive(Debug, Serialize, Deserialize, Default, Clone)]
-
-struct DateRange {
-    mindate: DateTime<Utc>,
-    maxdate: DateTime<Utc>,
-}
-
-async fn daterange(
-    host: String,
-    token: String,
-    website_id: String,
-) -> Result<DateRange, ResponseError> {
-    println!("fn: umami::daterange");
-
-    let client = reqwest::Client::new();
-    let response = client
-        .get(format!("{host}/api/websites/{website_id}/daterange"))
-        .header("authorization", format!("Bearer {token}"))
-        .send()
-        .await?
-        .json::<DateRange>()
-        .await?;
-
-    Ok(response)
-}
-
-#[derive(Debug, Serialize, Deserialize, Default, Clone)]
-
 struct StatsResponse {
     pageviews: StatsResponseValue,
     visitors: StatsResponseValue,
@@ -137,14 +110,12 @@ pub async fn pageviews_path(
 ) -> Result<u64, ResponseError> {
     println!("fn: umami::pageviews_path");
 
-    let daterange = daterange(host.clone(), token.clone(), website_id.clone()).await?;
-
     let client = reqwest::Client::new();
     let response = client
         .get(format!("{host}/api/websites/{website_id}/stats"))
         .header("authorization", format!("Bearer {token}"))
-        .query(&[("startAt", daterange.mindate.timestamp_millis())])
-        .query(&[("endAt", daterange.maxdate.timestamp_millis())])
+        .query(&[("startAt", "0")])
+        .query(&[("endAt", "9999999999999")])
         .query(&[("url", path)])
         .send()
         .await?
