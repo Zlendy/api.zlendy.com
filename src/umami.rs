@@ -1,4 +1,3 @@
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 use crate::errors::ResponseError;
@@ -39,13 +38,8 @@ pub struct LoginResponse {
 
 #[derive(Debug, Serialize, Deserialize, Default, Clone)]
 pub struct LoginResponseUser {
-    pub id: String,
     pub username: String,
     pub role: String,
-    #[serde(rename = "createdAt")]
-    pub created_at: DateTime<Utc>,
-    #[serde(rename = "isAdmin")]
-    pub is_admin: bool,
 }
 
 /// Returns API token
@@ -72,17 +66,12 @@ pub async fn login(host: String, login: LoginRequest) -> Result<LoginResponse, R
 #[derive(Debug, Serialize, Deserialize, Default, Clone)]
 struct StatsResponse {
     pageviews: StatsResponseValue,
-    visitors: StatsResponseValue,
-    visits: StatsResponseValue,
-    bounces: StatsResponseValue,
-    totaltime: StatsResponseValue,
 }
 
 #[derive(Debug, Serialize, Deserialize, Default, Clone)]
 
 struct StatsResponseValue {
     value: u64,
-    prev: u64,
 }
 
 pub async fn pageviews_path(
