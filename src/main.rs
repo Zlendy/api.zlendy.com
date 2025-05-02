@@ -13,6 +13,7 @@ use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
 pub mod args;
+pub mod errors;
 pub mod routes;
 pub mod umami;
 use crate::routes::blog;

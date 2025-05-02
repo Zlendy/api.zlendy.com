@@ -1,24 +1,7 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug)]
-pub enum ResponseError {
-    ReqwestError(reqwest::Error),
-    SerdeJsonError(serde_json::Error),
-    UnauthorizedError,
-}
-
-impl From<reqwest::Error> for ResponseError {
-    fn from(error: reqwest::Error) -> Self {
-        ResponseError::ReqwestError(error)
-    }
-}
-
-impl From<serde_json::Error> for ResponseError {
-    fn from(error: serde_json::Error) -> Self {
-        ResponseError::SerdeJsonError(error)
-    }
-}
+use crate::errors::ResponseError;
 
 pub async fn verify(host: String, token: Option<String>) -> Result<String, ResponseError> {
     println!("fn: umami::verify");
