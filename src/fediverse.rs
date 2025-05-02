@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
 
 use crate::errors::ResponseError;
@@ -10,6 +12,7 @@ struct NoteRequest {
 
 #[derive(Debug, Serialize, Deserialize, Default, Clone)]
 pub struct NoteResponse {
+    pub id: String,
     #[serde(rename = "repliesCount")]
     pub replies_count: u64,
     #[serde(rename = "reactionCount")]
@@ -30,4 +33,38 @@ pub async fn note(host: String, note_id: String) -> Result<NoteResponse, Respons
         .await?;
 
     Ok(response)
+}
+
+#[derive(Debug, Serialize, Deserialize, Default, Clone)]
+struct NotesUserRequest {
+    #[serde(rename = "userId")]
+    user_id: String,
+    limit: u32,
+}
+
+pub type NotesUserResponse = HashMap<String, NoteResponse>;
+
+pub async fn notes_user(host: String, user_id: String) -> Result<NotesUserResponse, ResponseError> {
+    println!("fn: fediverse::notes_user");
+
+    let client = reqwest::Client::new();
+    let response = client
+        .post(format!("{host}/api/users/notes"))
+        .header("Content-Type", "application/json")
+        .body(serde_json::to_string(&NotesUserRequest {
+            user_id,
+            limit: 100,
+        })?)
+        .send()
+        .await?
+        .json::<Vec<NoteResponse>>()
+        .await?;
+
+    let mut hashmap = NotesUserResponse::new();
+
+    for item in response {
+        hashmap.insert(item.id.clone(), item);
+    }
+
+    Ok(hashmap)
 }

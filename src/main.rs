@@ -26,7 +26,10 @@ pub struct AppState {
 }
 
 #[derive(OpenApi)]
-#[openapi(info(title = "api.zlendy.com"), paths(blog::get_metadata))]
+#[openapi(
+    info(title = "api.zlendy.com"),
+    paths(blog::get_metadata, blog::get_metadata_all)
+)]
 pub struct ApiDoc;
 
 #[tokio::main]
@@ -41,6 +44,7 @@ async fn main() -> Result<(), dotenvy::Error> {
 
     let app = Router::new()
         .route("/blog/metadata/{slug}", get(blog::get_metadata))
+        .route("/blog/metadata", get(blog::get_metadata_all))
         .merge(SwaggerUi::new("/").url("/api-doc/openapi.json", ApiDoc::openapi()))
         .layer(CompressionLayer::new())
         .layer(

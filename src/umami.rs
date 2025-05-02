@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
 
 use crate::errors::ResponseError;
@@ -69,7 +71,6 @@ struct StatsResponse {
 }
 
 #[derive(Debug, Serialize, Deserialize, Default, Clone)]
-
 struct StatsResponseValue {
     value: u64,
 }
@@ -95,4 +96,42 @@ pub async fn pageviews_path(
         .await?;
 
     Ok(response.pageviews.value)
+}
+
+#[derive(Debug, Serialize, Deserialize, Default, Clone)]
+struct MetricsResponseItem {
+    x: String,
+    y: u64,
+}
+
+pub type PageViewsPrefixResponse = HashMap<String, u64>;
+
+pub async fn pageviews_prefix(
+    host: String,
+    token: String,
+    website_id: String,
+    prefix: String,
+) -> Result<PageViewsPrefixResponse, ResponseError> {
+    println!("fn: umami::pageviews_prefix");
+
+    let client = reqwest::Client::new();
+    let response = client
+        .get(format!("{host}/api/websites/{website_id}/metrics"))
+        .header("authorization", format!("Bearer {token}"))
+        .query(&[("startAt", "0")])
+        .query(&[("endAt", "9999999999999")])
+        .query(&[("url", format!("~{prefix}/"))])
+        .query(&[("type", "url")])
+        .send()
+        .await?
+        .json::<Vec<MetricsResponseItem>>()
+        .await?;
+
+    let mut hashmap = PageViewsPrefixResponse::new();
+
+    for item in response {
+        hashmap.insert(item.x, item.y);
+    }
+
+    Ok(hashmap)
 }
