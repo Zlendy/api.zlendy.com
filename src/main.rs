@@ -14,6 +14,7 @@ use utoipa_swagger_ui::SwaggerUi;
 
 pub mod args;
 pub mod errors;
+pub mod fediverse;
 pub mod routes;
 pub mod umami;
 use crate::routes::blog;

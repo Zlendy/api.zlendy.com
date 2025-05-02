@@ -14,6 +14,7 @@ use utoipa::ToSchema;
 
 use crate::{
     AppState,
+    fediverse::{self, NoteResponse},
     umami::{self, LoginRequest},
 };
 
@@ -21,7 +22,7 @@ pub type SharedBlogState = Arc<Mutex<BlogState>>;
 
 #[derive(Default, Debug, Clone)]
 pub struct BlogState {
-    value: Option<BlogRoutes>,
+    value: BlogRoutes,
     last_modified: DateTime<Utc>,
     umami_token: Option<String>,
 }
@@ -47,19 +48,13 @@ fn expired_cache(last_modified: DateTime<Utc>, minutes: i64) -> bool {
     diff.num_minutes() > minutes
 }
 
-async fn update_routes(
-    current_routes: Option<BlogRoutes>,
-    host: String,
-) -> Result<BlogRoutes, reqwest::Error> {
+async fn update_routes(mut routes: BlogRoutes, host: String) -> Result<BlogRoutes, reqwest::Error> {
     println!("fn: blog::update_routes");
 
     let response = reqwest::get(format!("{host}/blog.json"))
         .await?
         .json::<HashMap<String, Option<String>>>()
         .await?;
-
-    // Reuse BlogRoutes if it exists
-    let mut routes = current_routes.unwrap_or_default();
 
     for (slug, fediverse) in response {
         let metadata = match routes.get(&slug) {
@@ -70,7 +65,8 @@ async fn update_routes(
         routes.insert(
             slug,
             BlogValue {
-                metadata, // This field is updated later
+                // These fields are updated later
+                metadata,
                 last_modified: DateTime::default(),
                 fediverse,
             },
@@ -101,33 +97,18 @@ pub async fn get_metadata(
 
     println!("\n\nfn: blog::get_metadata ({})", slug);
 
-    let routes = match blog_state.value.clone() {
-        Some(routes) if expired_cache(blog_state.last_modified, 5) => {
-            // Routes cache has expired
-            let routes = update_routes(Some(routes), args.zlendy_url.clone()).await;
-            blog_state.last_modified = Utc::now();
+    if expired_cache(blog_state.last_modified, 5) {
+        let updated_routes = update_routes(blog_state.value.clone(), args.zlendy_url.clone()).await;
+        let Ok(updated_routes) = updated_routes else {
+            println!("error: routes cache couldn't be updated");
+            return Err(StatusCode::SERVICE_UNAVAILABLE);
+        };
 
-            routes
-        }
-        Some(routes) => Ok(routes), // Routes cache is still valid
-        None => {
-            // Routes cache does not exist
-            let routes = update_routes(None, args.zlendy_url.clone()).await;
-            blog_state.last_modified = Utc::now();
+        blog_state.value = updated_routes;
+        blog_state.last_modified = Utc::now();
+    }
 
-            routes
-        }
-    };
-
-    let Ok(mut routes) = routes else {
-        println!("error: routes cache couldn't be updated");
-        println!("{:#?}", routes);
-        return Err(StatusCode::SERVICE_UNAVAILABLE);
-    };
-
-    blog_state.value = Some(routes.clone());
-
-    let Some(mut value) = routes.get(&slug).cloned() else {
+    let Some(mut value) = blog_state.value.get(&slug).cloned() else {
         println!("error: slug \"{}\" was not found in routes cache", slug);
         return Err(StatusCode::NOT_FOUND);
     };
@@ -176,12 +157,28 @@ pub async fn get_metadata(
         return Err(StatusCode::SERVICE_UNAVAILABLE);
     };
 
-    value.metadata.views = umami_pageviews;
+    let fediverse_note = match value.fediverse {
+        Some(ref fediverse) => {
+            let response = fediverse::note(args.fediverse_url.clone(), fediverse.to_string()).await;
+
+            let Ok(response) = response else {
+                println!("error: couldn't parse note");
+                return Err(StatusCode::SERVICE_UNAVAILABLE);
+            };
+
+            response
+        }
+        None => NoteResponse::default(),
+    };
+
+    value.metadata = BlogMetadata {
+        views: umami_pageviews,
+        comments: fediverse_note.replies_count,
+        reactions: fediverse_note.reaction_count,
+    };
     value.last_modified = Utc::now();
 
-    routes.insert(slug.clone(), value.clone());
-
-    blog_state.value = Some(routes.clone());
+    blog_state.value.insert(slug.clone(), value.clone());
 
     println!("info: fetched updated data successfully");
     // println!("{:#?}", blog_state);

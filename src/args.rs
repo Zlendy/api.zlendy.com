@@ -21,6 +21,9 @@ pub struct Args {
     #[arg(env = "UMAMI_WEBSITE_ID", long)]
     pub umami_website_id: String,
 
+    #[arg(env = "FEDIVERSE_URL", long)]
+    pub fediverse_url: String,
+
     #[arg(env = "ZLENDY_URL", long)]
     pub zlendy_url: String,
 }
