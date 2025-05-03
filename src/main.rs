@@ -42,6 +42,8 @@ async fn main() -> Result<(), dotenvy::Error> {
         ..Default::default()
     };
 
+    env_logger::init();
+
     let app = Router::new()
         .route("/blog/metadata/{slug}", get(blog::get_metadata))
         .route("/blog/metadata", get(blog::get_metadata_all))
@@ -58,7 +60,7 @@ async fn main() -> Result<(), dotenvy::Error> {
         .with_state(state);
 
     let listener = TcpListener::bind(address.clone()).await.unwrap();
-    println!("info: listening on {}", address);
+    log::info!("listening on {}", address);
 
     axum::serve(listener, app).await.unwrap();
 

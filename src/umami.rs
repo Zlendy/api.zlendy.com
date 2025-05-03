@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use crate::errors::ResponseError;
 
 pub async fn verify(host: String, token: Option<String>) -> Result<String, ResponseError> {
-    println!("fn: umami::verify");
+    log::debug!("fn: verify");
 
     let Some(token) = token else {
         return Err(ResponseError::UnauthorizedError);
@@ -46,7 +46,7 @@ pub struct LoginResponseUser {
 
 /// Returns API token
 pub async fn login(host: String, login: LoginRequest) -> Result<LoginResponse, ResponseError> {
-    println!("fn: umami::login");
+    log::debug!("fn: login");
 
     let client = reqwest::Client::new();
     let response = client
@@ -57,9 +57,10 @@ pub async fn login(host: String, login: LoginRequest) -> Result<LoginResponse, R
         .json::<LoginResponse>()
         .await?;
 
-    println!(
-        "info: logged in as {} ({})",
-        response.user.username, response.user.role
+    log::info!(
+        "logged in as {} ({})",
+        response.user.username,
+        response.user.role
     );
 
     Ok(response)
@@ -81,7 +82,7 @@ pub async fn pageviews_path(
     website_id: String,
     path: String,
 ) -> Result<u64, ResponseError> {
-    println!("fn: umami::pageviews_path");
+    log::debug!("fn: pageviews_path");
 
     let client = reqwest::Client::new();
     let response = client
@@ -112,7 +113,7 @@ pub async fn pageviews_prefix(
     website_id: String,
     prefix: String,
 ) -> Result<PageViewsPrefixResponse, ResponseError> {
-    println!("fn: umami::pageviews_prefix");
+    log::debug!("fn: pageviews_prefix");
 
     let client = reqwest::Client::new();
     let response = client

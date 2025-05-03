@@ -20,7 +20,7 @@ pub struct NoteResponse {
 }
 
 pub async fn note(host: String, note_id: String) -> Result<NoteResponse, ResponseError> {
-    println!("fn: fediverse::note");
+    log::debug!("fn: note");
 
     let client = reqwest::Client::new();
     let response = client
@@ -45,7 +45,7 @@ struct NotesUserRequest {
 pub type NotesUserResponse = HashMap<String, NoteResponse>;
 
 pub async fn notes_user(host: String, user_id: String) -> Result<NotesUserResponse, ResponseError> {
-    println!("fn: fediverse::notes_user");
+    log::debug!("fn: notes_user");
 
     let client = reqwest::Client::new();
     let response = client

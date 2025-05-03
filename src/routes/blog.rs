@@ -50,7 +50,7 @@ fn expired_cache(last_modified: DateTime<Utc>, minutes: i64) -> bool {
 }
 
 async fn update_routes(mut routes: BlogRoutes, host: String) -> Result<BlogRoutes, reqwest::Error> {
-    println!("fn: blog::update_routes");
+    log::debug!("fn: update_routes");
 
     let response = reqwest::get(format!("{host}/blog.json"))
         .await?
@@ -96,12 +96,12 @@ pub async fn get_metadata(
     let AppState { args, blog } = state;
     let mut blog_state = blog.lock().await;
 
-    println!("\n\nfn: blog::get_metadata ({})", slug);
+    log::debug!("fn: get_metadata ({})", slug);
 
     if expired_cache(blog_state.last_modified, 5) {
         let updated_routes = update_routes(blog_state.value.clone(), args.zlendy_url.clone()).await;
         let Ok(updated_routes) = updated_routes else {
-            println!("error: routes cache couldn't be updated");
+            log::error!("routes cache couldn't be updated");
             return Err(StatusCode::SERVICE_UNAVAILABLE);
         };
 
@@ -110,16 +110,16 @@ pub async fn get_metadata(
     }
 
     let Some(mut value) = blog_state.value.get(&slug).cloned() else {
-        println!("error: slug \"{}\" was not found in routes cache", slug);
+        log::error!("slug \"{}\" was not found in routes cache", slug);
         return Err(StatusCode::NOT_FOUND);
     };
 
     if !expired_cache(value.last_modified, 5) {
-        println!("info: found valid entry in routes cache");
+        log::info!("found valid entry in routes cache");
         return Ok(Json(value.metadata.clone()));
     }
 
-    println!("info: updating entry in routes cache");
+    log::info!("updating entry in routes cache");
 
     let umami_token =
         match umami::verify(args.umami_url.clone(), blog_state.umami_token.clone()).await {
@@ -135,7 +135,7 @@ pub async fn get_metadata(
                 .await;
 
                 let Ok(umami_login) = umami_login else {
-                    println!("error: invalid umami login credentials");
+                    log::error!("invalid umami login credentials");
                     return Err(StatusCode::SERVICE_UNAVAILABLE);
                 };
 
@@ -154,7 +154,7 @@ pub async fn get_metadata(
     .await;
 
     let Ok(umami_pageviews) = umami_pageviews else {
-        println!("error: couldn't parse pageviews");
+        log::error!("couldn't parse pageviews");
         return Err(StatusCode::SERVICE_UNAVAILABLE);
     };
 
@@ -163,7 +163,7 @@ pub async fn get_metadata(
             let response = fediverse::note(args.fediverse_url.clone(), fediverse.to_string()).await;
 
             let Ok(response) = response else {
-                println!("error: couldn't parse note");
+                log::error!("couldn't parse note");
                 return Err(StatusCode::SERVICE_UNAVAILABLE);
             };
 
@@ -181,8 +181,8 @@ pub async fn get_metadata(
 
     blog_state.value.insert(slug.clone(), value.clone());
 
-    println!("info: fetched updated data successfully");
-    // println!("{:#?}", blog_state);
+    log::trace!("{:#?}", blog_state);
+    log::info!("fetched updated data successfully");
     Ok(Json(value.metadata.clone()))
 }
 
@@ -200,12 +200,12 @@ pub async fn get_metadata_all(
     let AppState { args, blog } = state;
     let mut blog_state = blog.lock().await;
 
-    println!("\n\nfn: blog::get_metadata_all");
+    log::debug!("fn: get_metadata_all");
 
     if expired_cache(blog_state.last_modified, 5) {
         let updated_routes = update_routes(blog_state.value.clone(), args.zlendy_url.clone()).await;
         let Ok(updated_routes) = updated_routes else {
-            println!("error: routes cache couldn't be updated");
+            log::error!("routes cache couldn't be updated");
             return Err(StatusCode::SERVICE_UNAVAILABLE);
         };
 
@@ -214,7 +214,7 @@ pub async fn get_metadata_all(
     }
 
     if !expired_cache(blog_state.values_last_modified, 5) {
-        println!("info: routes cache is still valid");
+        log::info!("routes cache is still valid");
 
         let hashmap: HashMap<String, BlogMetadata> = blog_state
             .value
@@ -224,7 +224,7 @@ pub async fn get_metadata_all(
         return Ok(Json(hashmap));
     }
 
-    println!("info: updating entries in routes cache");
+    log::info!("updating entries in routes cache");
 
     let umami_token =
         match umami::verify(args.umami_url.clone(), blog_state.umami_token.clone()).await {
@@ -240,7 +240,7 @@ pub async fn get_metadata_all(
                 .await;
 
                 let Ok(umami_login) = umami_login else {
-                    println!("error: invalid umami login credentials");
+                    log::error!("invalid umami login credentials");
                     return Err(StatusCode::SERVICE_UNAVAILABLE);
                 };
 
@@ -259,8 +259,8 @@ pub async fn get_metadata_all(
     .await;
 
     let Ok(umami_pageviews_map) = umami_pageviews_map else {
-        println!("{:#?}", umami_pageviews_map);
-        println!("error: couldn't parse pageviews");
+        log::debug!("{:#?}", umami_pageviews_map);
+        log::error!("couldn't parse pageviews");
         return Err(StatusCode::SERVICE_UNAVAILABLE);
     };
 
@@ -268,7 +268,7 @@ pub async fn get_metadata_all(
         fediverse::notes_user(args.fediverse_url.clone(), args.fediverse_user_id.clone()).await;
 
     let Ok(fediverse_notes_map) = fediverse_notes_map else {
-        println!("error: couldn't parse notes");
+        log::error!("couldn't parse notes");
         return Err(StatusCode::SERVICE_UNAVAILABLE);
     };
 
@@ -305,7 +305,7 @@ pub async fn get_metadata_all(
 
     blog_state.values_last_modified = Utc::now();
 
-    println!("info: fetched updated data successfully");
-    // println!("{:#?}", blog_state);
+    log::trace!("{:#?}", blog_state);
+    log::info!("fetched updated data successfully");
     Ok(Json(routes))
 }
