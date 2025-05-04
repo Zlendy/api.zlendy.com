@@ -34,6 +34,8 @@ pub struct ApiDoc;
 
 #[tokio::main]
 async fn main() -> Result<(), dotenvy::Error> {
+    env_logger::init();
+
     let args = Args::load()?;
     let address = format!("{}:{}", args.host, args.port);
 
@@ -41,8 +43,6 @@ async fn main() -> Result<(), dotenvy::Error> {
         args,
         ..Default::default()
     };
-
-    env_logger::init();
 
     let app = Router::new()
         .route("/blog/metadata/{slug}", get(blog::get_metadata))

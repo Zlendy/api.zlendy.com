@@ -33,7 +33,12 @@ pub struct Args {
 
 impl Args {
     pub fn load() -> Result<Args, dotenvy::Error> {
-        dotenvy::dotenv()?;
+        match dotenvy::dotenv() {
+            Ok(_) => log::info!("Found .env file"),
+            Err(_) => log::error!(
+                "Failed to load .env file, using environment variables and arguments instead"
+            ),
+        }
         Ok(Args::parse())
     }
 }
