@@ -37,6 +37,8 @@ async fn main() -> Result<(), dotenvy::Error> {
     env_logger::init();
 
     let args = Args::load()?;
+    log::trace!("{:#?}", args);
+
     let address = format!("{}:{}", args.host, args.port);
 
     let state = AppState {
