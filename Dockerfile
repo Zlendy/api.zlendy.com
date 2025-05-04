@@ -24,7 +24,8 @@ RUN ls /api-zlendy-com/target/release/
 # The final base image
 FROM debian:bookworm-slim
 RUN apt-get update && apt-get install -y \
-    openssl
+    openssl \
+    ca-certificates
 
 # Copy from the previous build
 COPY --from=build /api-zlendy-com/target/release/api-zlendy-com /usr/src/api-zlendy-com
