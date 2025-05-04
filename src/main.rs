@@ -1,8 +1,15 @@
 use std::{borrow::Cow, time::Duration};
 
 use args::Args;
+use axum::http::header::{ACCESS_CONTROL_ALLOW_ORIGIN, HeaderValue};
+use axum::response::Response;
 use axum::{
-    Router, error_handling::HandleErrorLayer, http::StatusCode, response::IntoResponse,
+    Router,
+    error_handling::HandleErrorLayer,
+    extract::{Request, State},
+    http::StatusCode,
+    middleware::{self, Next},
+    response::IntoResponse,
     routing::get,
 };
 use routes::blog::SharedBlogState;
@@ -59,6 +66,10 @@ async fn main() -> Result<(), dotenvy::Error> {
                 .concurrency_limit(1024)
                 .timeout(Duration::from_secs(10)),
         )
+        .route_layer(middleware::from_fn_with_state(
+            state.clone(),
+            response_headers,
+        ))
         .with_state(state);
 
     let listener = TcpListener::bind(address.clone()).await.unwrap();
@@ -85,4 +96,26 @@ async fn handle_error(error: BoxError) -> impl IntoResponse {
         StatusCode::INTERNAL_SERVER_ERROR,
         Cow::from(format!("Unhandled internal error: {error}")),
     )
+}
+
+async fn response_headers(State(state): State<AppState>, request: Request, next: Next) -> Response {
+    let mut response = next.run(request).await;
+
+    if let Some(value) = state.args.access_control_allow_origin {
+        match value.parse::<HeaderValue>() {
+            Ok(value) => {
+                response
+                    .headers_mut()
+                    .insert(ACCESS_CONTROL_ALLOW_ORIGIN, value);
+            }
+            Err(_) => {
+                log::error!(
+                    "value of header \"{}\" couldn't be parsed",
+                    ACCESS_CONTROL_ALLOW_ORIGIN
+                );
+            }
+        }
+    }
+
+    response
 }

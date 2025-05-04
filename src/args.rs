@@ -9,6 +9,9 @@ pub struct Args {
     #[arg(env = "PORT", long, default_value_t = 3000)]
     pub port: u16,
 
+    #[arg(env = "ACCESS_CONTROL_ALLOW_ORIGIN", long)]
+    pub access_control_allow_origin: Option<String>,
+
     #[arg(env = "UMAMI_URL", long)]
     pub umami_url: String,
 
