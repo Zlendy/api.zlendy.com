@@ -5,7 +5,7 @@ This project is meant to be used inside [zlendy.com](https://zlendy.com).
 
 ## Getting started
 
-Copy `example.env` to `.env` and modify some values.
+Copy `.env.example` to `.env` and modify some values.
 
 - **RUST_LOG**: Enables [logging](https://docs.rs/env_logger/latest/env_logger/#enabling-logging) to stdout.
 - **UMAMI_URL** (MODIFY ME): URL of self-hosted [Umami Analytics](https://umami.is/docs/install) instance (does not work with Umami Analytics Cloud).
