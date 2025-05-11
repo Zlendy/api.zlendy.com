@@ -13,7 +13,7 @@ pub async fn verify(host: String, token: Option<String>) -> Result<String, Respo
 
     let client = reqwest::Client::new();
     let response = client
-        .get(format!("{host}/api/auth/verify"))
+        .post(format!("{host}/api/auth/verify"))
         .header("authorization", format!("Bearer {token}"))
         .send()
         .await?
