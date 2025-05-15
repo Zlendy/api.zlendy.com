@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-axum = { version = "0.8.3", features = ["macros"] }
+axum = { version = "0.8.4", features = ["macros"] }
 chrono = { version = "0.4.40", features = ["serde"] }
 clap = { version = "4.5.37", features = ["derive", "env"] }
 dotenvy = { version = "0.15.7" }
