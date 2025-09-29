@@ -5,7 +5,7 @@ edition = "2024"
 license = "MIT"
 
 [dependencies]
-axum = { version = "0.8.4", features = ["macros"] }
+axum = { version = "0.8.5", features = ["macros"] }
 chrono = { version = "0.4.42", features = ["serde"] }
 clap = { version = "4.5.47", features = ["derive", "env"] }
 dotenvy = { version = "0.15.7" }
