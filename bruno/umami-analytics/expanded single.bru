@@ -1,0 +1,27 @@
+meta {
+  name: expanded single
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{host}}/api/websites/:website_id/metrics/expanded?startAt=0&endAt=9999999999999&path=/blog/first-post&type=path
+  body: none
+  auth: inherit
+}
+
+params:query {
+  startAt: 0
+  endAt: 9999999999999
+  path: /blog/first-post
+  type: path
+}
+
+params:path {
+  website_id: 62fd06c8-e1d7-4e8a-b246-493cf88fe37b
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
