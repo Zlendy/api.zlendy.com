@@ -2,7 +2,9 @@
 pub enum ResponseError {
     ReqwestError(reqwest::Error),
     SerdeJsonError(serde_json::Error),
+    ParseIntError(std::num::ParseIntError),
     UnauthorizedError,
+    NotFoundError,
 }
 
 impl From<reqwest::Error> for ResponseError {
@@ -14,5 +16,11 @@ impl From<reqwest::Error> for ResponseError {
 impl From<serde_json::Error> for ResponseError {
     fn from(error: serde_json::Error) -> Self {
         ResponseError::SerdeJsonError(error)
+    }
+}
+
+impl From<std::num::ParseIntError> for ResponseError {
+    fn from(error: std::num::ParseIntError) -> Self {
+        ResponseError::ParseIntError(error)
     }
 }

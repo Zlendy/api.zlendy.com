@@ -67,13 +67,9 @@ pub async fn login(host: String, login: LoginRequest) -> Result<LoginResponse, R
 }
 
 #[derive(Debug, Serialize, Deserialize, Default, Clone)]
-struct StatsResponse {
-    pageviews: StatsResponseValue,
-}
-
-#[derive(Debug, Serialize, Deserialize, Default, Clone)]
-struct StatsResponseValue {
-    value: u64,
+struct MetricsExpandedItem {
+    name: String,
+    pageviews: String,
 }
 
 pub async fn pageviews_path(
@@ -86,23 +82,23 @@ pub async fn pageviews_path(
 
     let client = reqwest::Client::new();
     let response = client
-        .get(format!("{host}/api/websites/{website_id}/stats"))
+        .get(format!("{host}/api/websites/{website_id}/metrics/expanded"))
         .header("authorization", format!("Bearer {token}"))
         .query(&[("startAt", "0")])
         .query(&[("endAt", "9999999999999")])
-        .query(&[("url", path)])
+        .query(&[("path", path)])
+        .query(&[("type", "path")])
         .send()
         .await?
-        .json::<StatsResponse>()
+        .json::<Vec<MetricsExpandedItem>>()
         .await?;
 
-    Ok(response.pageviews.value)
-}
-
-#[derive(Debug, Serialize, Deserialize, Default, Clone)]
-struct MetricsResponseItem {
-    x: String,
-    y: u64,
+    let views = response
+        .get(0)
+        .ok_or(ResponseError::NotFoundError)?
+        .pageviews
+        .parse::<u64>()?;
+    Ok(views)
 }
 
 pub type PageViewsPrefixResponse = HashMap<String, u64>;
@@ -117,21 +113,21 @@ pub async fn pageviews_prefix(
 
     let client = reqwest::Client::new();
     let response = client
-        .get(format!("{host}/api/websites/{website_id}/metrics"))
+        .get(format!("{host}/api/websites/{website_id}/metrics/expanded"))
         .header("authorization", format!("Bearer {token}"))
         .query(&[("startAt", "0")])
         .query(&[("endAt", "9999999999999")])
-        .query(&[("url", format!("~{prefix}/"))])
-        .query(&[("type", "url")])
+        .query(&[("path", format!("c.{prefix}/"))])
+        .query(&[("type", "path")])
         .send()
         .await?
-        .json::<Vec<MetricsResponseItem>>()
+        .json::<Vec<MetricsExpandedItem>>()
         .await?;
 
     let mut hashmap = PageViewsPrefixResponse::new();
 
     for item in response {
-        hashmap.insert(item.x, item.y);
+        hashmap.insert(item.name, item.pageviews.parse::<u64>()?);
     }
 
     Ok(hashmap)
