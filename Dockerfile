@@ -22,7 +22,7 @@ RUN cargo build --release
 RUN ls /api-zlendy-com/target/release/
 
 # The final base image
-FROM debian:bookworm-slim
+FROM debian:trixie-slim
 RUN apt-get update && apt-get install -y \
     openssl \
     ca-certificates
