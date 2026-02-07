@@ -96,7 +96,7 @@ pub async fn get_metadata(
     let AppState { args, blog } = state;
     let mut blog_state = blog.lock().await;
 
-    log::debug!("fn: get_metadata ({})", slug);
+    log::debug!("fn: get_metadata ({slug})");
 
     if expired_cache(blog_state.last_modified, 5) {
         let updated_routes = update_routes(blog_state.value.clone(), args.zlendy_url.clone()).await;
@@ -110,7 +110,7 @@ pub async fn get_metadata(
     }
 
     let Some(mut value) = blog_state.value.get(&slug).cloned() else {
-        log::error!("slug \"{}\" was not found in routes cache", slug);
+        log::error!("slug \"{slug}\" was not found in routes cache");
         return Err(StatusCode::NOT_FOUND);
     };
 
@@ -122,34 +122,33 @@ pub async fn get_metadata(
     log::info!("updating entry in routes cache");
 
     let umami_token =
-        match umami::verify(args.umami_url.clone(), blog_state.umami_token.clone()).await {
-            Ok(token) => token,
-            Err(_) => {
-                let umami_login = umami::login(
-                    args.umami_url.clone(),
-                    LoginRequest {
-                        username: args.umami_username.clone(),
-                        password: args.umami_password.clone(),
-                    },
-                )
-                .await;
+        if let Ok(token) = umami::verify(&args.umami_url, &blog_state.umami_token).await {
+            token
+        } else {
+            let umami_login = umami::login(
+                &args.umami_url,
+                LoginRequest {
+                    username: args.umami_username,
+                    password: args.umami_password,
+                },
+            )
+            .await;
 
-                let Ok(umami_login) = umami_login else {
-                    log::error!("invalid umami login credentials");
-                    return Err(StatusCode::SERVICE_UNAVAILABLE);
-                };
+            let Ok(umami_login) = umami_login else {
+                log::error!("invalid umami login credentials");
+                return Err(StatusCode::SERVICE_UNAVAILABLE);
+            };
 
-                umami_login.token
-            }
+            umami_login.token
         };
 
     blog_state.umami_token = Some(umami_token.clone());
 
     let umami_pageviews = umami::pageviews_path(
-        args.umami_url.clone(),
-        umami_token.clone(),
-        args.umami_website_id.clone(),
-        format!("/blog/{}", slug.clone()),
+        args.umami_url,
+        umami_token,
+        args.umami_website_id,
+        format!("/blog/{slug}"),
     )
     .await;
 
@@ -160,7 +159,7 @@ pub async fn get_metadata(
 
     let fediverse_note = match value.fediverse {
         Some(ref fediverse) => {
-            let response = fediverse::note(args.fediverse_url.clone(), fediverse.to_string()).await;
+            let response = fediverse::note(args.fediverse_url, fediverse.clone()).await;
 
             let Ok(response) = response else {
                 log::error!("couldn't parse note");
@@ -181,7 +180,7 @@ pub async fn get_metadata(
 
     blog_state.value.insert(slug.clone(), value.clone());
 
-    log::trace!("{:#?}", blog_state);
+    log::trace!("{blog_state:#?}");
     log::info!("fetched updated data successfully");
     Ok(Json(value.metadata.clone()))
 }
@@ -227,45 +226,44 @@ pub async fn get_metadata_all(
     log::info!("updating entries in routes cache");
 
     let umami_token =
-        match umami::verify(args.umami_url.clone(), blog_state.umami_token.clone()).await {
-            Ok(token) => token,
-            Err(_) => {
-                let umami_login = umami::login(
-                    args.umami_url.clone(),
-                    LoginRequest {
-                        username: args.umami_username.clone(),
-                        password: args.umami_password.clone(),
-                    },
-                )
-                .await;
+        if let Ok(token) = umami::verify(&args.umami_url, &blog_state.umami_token).await {
+            token
+        } else {
+            let umami_login = umami::login(
+                &args.umami_url,
+                LoginRequest {
+                    username: args.umami_username,
+                    password: args.umami_password,
+                },
+            )
+            .await;
 
-                let Ok(umami_login) = umami_login else {
-                    log::error!("invalid umami login credentials");
-                    return Err(StatusCode::SERVICE_UNAVAILABLE);
-                };
+            let Ok(umami_login) = umami_login else {
+                log::error!("invalid umami login credentials");
+                return Err(StatusCode::SERVICE_UNAVAILABLE);
+            };
 
-                umami_login.token
-            }
+            umami_login.token
         };
 
     blog_state.umami_token = Some(umami_token.clone());
 
     let umami_pageviews_map = umami::pageviews_prefix(
-        args.umami_url.clone(),
-        umami_token.clone(),
-        args.umami_website_id.clone(),
+        args.umami_url,
+        umami_token,
+        args.umami_website_id,
         "/blog".to_string(),
     )
     .await;
 
     let Ok(umami_pageviews_map) = umami_pageviews_map else {
-        log::debug!("{:#?}", umami_pageviews_map);
+        log::debug!("{umami_pageviews_map:#?}");
         log::error!("couldn't parse pageviews");
         return Err(StatusCode::SERVICE_UNAVAILABLE);
     };
 
     let fediverse_notes_map =
-        fediverse::notes_user(args.fediverse_url.clone(), args.fediverse_user_id.clone()).await;
+        fediverse::notes_user(args.fediverse_url, args.fediverse_user_id).await;
 
     let Ok(fediverse_notes_map) = fediverse_notes_map else {
         log::error!("couldn't parse notes");
@@ -277,7 +275,7 @@ pub async fn get_metadata_all(
     for (slug, value) in &mut blog_state.value {
         let views = umami_pageviews_map
             .get(&format!("/blog/{slug}"))
-            .cloned()
+            .copied()
             .unwrap_or_default();
 
         let mut comments: u64 = 0;
@@ -305,7 +303,7 @@ pub async fn get_metadata_all(
 
     blog_state.values_last_modified = Utc::now();
 
-    log::trace!("{:#?}", blog_state);
+    log::trace!("{blog_state:#?}");
     log::info!("fetched updated data successfully");
     Ok(Json(routes))
 }

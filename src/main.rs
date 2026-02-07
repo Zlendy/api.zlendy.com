@@ -44,7 +44,7 @@ async fn main() -> Result<(), dotenvy::Error> {
     env_logger::init();
 
     let args = Args::load()?;
-    log::trace!("{:#?}", args);
+    log::trace!("{args:#?}");
 
     let address = format!("{}:{}", args.host, args.port);
 
@@ -72,8 +72,8 @@ async fn main() -> Result<(), dotenvy::Error> {
         ))
         .with_state(state);
 
-    let listener = TcpListener::bind(address.clone()).await.unwrap();
-    log::info!("listening on {}", address);
+    let listener = TcpListener::bind(&address).await.unwrap();
+    log::info!("listening on {address}");
 
     axum::serve(listener, app).await.unwrap();
 
@@ -109,10 +109,7 @@ async fn response_headers(State(state): State<AppState>, request: Request, next:
                     .insert(ACCESS_CONTROL_ALLOW_ORIGIN, value);
             }
             Err(_) => {
-                log::error!(
-                    "value of header \"{}\" couldn't be parsed",
-                    ACCESS_CONTROL_ALLOW_ORIGIN
-                );
+                log::error!("value of header \"{ACCESS_CONTROL_ALLOW_ORIGIN}\" couldn't be parsed");
             }
         }
     }

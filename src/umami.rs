@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::errors::ResponseError;
 
-pub async fn verify(host: String, token: Option<String>) -> Result<String, ResponseError> {
+pub async fn verify(host: &String, token: &Option<String>) -> Result<String, ResponseError> {
     log::debug!("fn: verify");
 
     let Some(token) = token else {
@@ -20,7 +20,7 @@ pub async fn verify(host: String, token: Option<String>) -> Result<String, Respo
         .status();
 
     if response.is_success() {
-        Ok(token)
+        Ok(token.to_owned())
     } else {
         Err(ResponseError::UnauthorizedError)
     }
@@ -45,7 +45,7 @@ pub struct LoginResponseUser {
 }
 
 /// Returns API token
-pub async fn login(host: String, login: LoginRequest) -> Result<LoginResponse, ResponseError> {
+pub async fn login(host: &String, login: LoginRequest) -> Result<LoginResponse, ResponseError> {
     log::debug!("fn: login");
 
     let client = reqwest::Client::new();
@@ -94,7 +94,7 @@ pub async fn pageviews_path(
         .await?;
 
     let views = response
-        .get(0)
+        .first()
         .ok_or(ResponseError::NotFoundError)?
         .pageviews
         .parse::<u64>()?;
